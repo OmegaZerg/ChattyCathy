@@ -3,6 +3,11 @@ import sys
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from call_function import available_functions
+from functions.get_files_info import get_files_info
+from functions.get_file_content import get_file_content
+from functions.run_python import run_python_file
+from functions.write_file import write_file
 
 def main():
     load_dotenv()
@@ -31,26 +36,6 @@ def main():
     #     print("Thanks for chatting. Talk to you next time!")
     #     sys.exit(0)
 
-    schema_get_files_info = types.FunctionDeclaration(
-        name="get_files_info",
-        description="Lists files in the specified directory along with their sizes, constrained to the working directory.",
-        parameters=types.Schema(
-            type=types.Type.OBJECT,
-            properties={
-                "directory": types.Schema(
-                    type=types.Type.STRING,
-                    description="The directory to list files from, relative to the working directory. If not provided, lists files in the working directory itself.",
-                ),
-            },
-        ),
-    )
-
-    available_functions = types.Tool(
-        function_declarations=[
-            schema_get_files_info,
-        ]
-    )
-
     messages = [
     types.Content(role="user", parts=[types.Part(text=user_prompt)]),
     ]
@@ -61,6 +46,9 @@ You are a helpful AI coding agent.
 When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
 
 - List files and directories
+- Read file contents
+- Execute Python files with optional arguments
+- Write or overwrite files
 
 All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
@@ -74,6 +62,14 @@ All paths you provide should be relative to the working directory. You do not ne
         if function_calls:
             for function_call_part in function_calls:
                 print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+                # if function_call_part.name == "get_files_info":
+                #     print(get_files_info(**function_call_part.args))
+                # elif function_call_part.name == "get_file_content":
+                #     print(get_file_content(**function_call_part.args))
+                # elif function_call_part.name == "run_python":
+                #     print(run_python_file(**function_call_part.args))
+                # elif function_call_part.name == "write_file":
+                #     print(write_file(**function_call_part.args))
         if verbose:
             print("Prompt tokens:", response.usage_metadata.prompt_token_count)
             print("Response tokens:", response.usage_metadata.candidates_token_count)
