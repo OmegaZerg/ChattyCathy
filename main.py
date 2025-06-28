@@ -52,6 +52,38 @@ When a user asks a question or makes a request, make a function call plan. You c
 
 All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
+    def call_function(function_call_part, verbose=False):
+        functions = {"get_files_info": get_files_info, "get_file_content": get_file_content, "run_python_file": run_python_file, "write_file": write_file}
+
+        if verbose:
+            print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+        else: print(f" - Calling function: {function_call_part.name}")
+
+        if function_call_part.name in functions:
+            function = functions[function_call_part.name]
+            arguments = {"working_directory": "./calculator"}
+            arguments.update(function_call_part.args)
+            function_result = function(**arguments)
+            return types.Content(
+                role="tool",
+                parts=[
+                    types.Part.from_function_response(
+                        name=function_call_part.name,
+                        response={"result": function_result},
+                    )
+                ],
+            )
+        else:
+            return types.Content(
+                role="tool",
+                parts=[
+                    types.Part.from_function_response(
+                        name=function_call_part.name,
+                        response={"error": f"Unknown function: {function_call_part.name}"},
+                    )
+                ],
+            )
+
     def generate_content(client, messages, verbose):
         response = client.models.generate_content(
         model='gemini-2.0-flash-001',
@@ -61,7 +93,14 @@ All paths you provide should be relative to the working directory. You do not ne
         function_calls = response.function_calls
         if function_calls:
             for function_call_part in function_calls:
-                print(f"Calling function: {function_call_part.name}({function_call_part.args})")
+                function_call_result = call_function(function_call_part, verbose)
+                if not function_call_result.parts[0].function_response.response:
+                    raise Exception("Content is missing from the call_function return, Red Alert!")
+                elif verbose:
+                    print(f"-> {function_call_result.parts[0].function_response.response}")
+                
+                
+                #print(f"Calling function: {function_call_part.name}({function_call_part.args})")
                 # if function_call_part.name == "get_files_info":
                 #     print(get_files_info(**function_call_part.args))
                 # elif function_call_part.name == "get_file_content":
