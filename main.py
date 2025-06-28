@@ -20,8 +20,8 @@ def main():
 
     if not args:
         print("AI Code Assistant")
-        print('\nUsage: python main.py "your prompt here" [--verbose]')
-        print('Example: python main.py "How do I fix the calculator?"')
+        print('\nUsage: python3 main.py "your prompt here" [--verbose]')
+        print('Example: python3 main.py "How do I fix the calculator?"')
         sys.exit(1)
 
     user_prompt = " ".join(args)
@@ -85,35 +85,34 @@ All paths you provide should be relative to the working directory. You do not ne
             )
 
     def generate_content(client, messages, verbose):
-        response = client.models.generate_content(
-        model='gemini-2.0-flash-001',
-        contents=messages,
-        config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt),
-        )
-        function_calls = response.function_calls
-        if function_calls:
-            for function_call_part in function_calls:
-                function_call_result = call_function(function_call_part, verbose)
-                if not function_call_result.parts[0].function_response.response:
-                    raise Exception("Content is missing from the call_function return, Red Alert!")
-                elif verbose:
-                    print(f"-> {function_call_result.parts[0].function_response.response}")
-                
-                
-                #print(f"Calling function: {function_call_part.name}({function_call_part.args})")
-                # if function_call_part.name == "get_files_info":
-                #     print(get_files_info(**function_call_part.args))
-                # elif function_call_part.name == "get_file_content":
-                #     print(get_file_content(**function_call_part.args))
-                # elif function_call_part.name == "run_python":
-                #     print(run_python_file(**function_call_part.args))
-                # elif function_call_part.name == "write_file":
-                #     print(write_file(**function_call_part.args))
-        if verbose:
-            print("Prompt tokens:", response.usage_metadata.prompt_token_count)
-            print("Response tokens:", response.usage_metadata.candidates_token_count)
-        print("Response:")
-        print(response.text)
+        i = 0
+        called = True
+        while i < 20 and called:
+            response = client.models.generate_content(
+            model='gemini-2.0-flash-001',
+            contents=messages,
+            config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt),
+            )
+            if response.candidates:
+                for candidate in response.candidates:
+                    messages.append(candidate.content)
+            function_calls = response.function_calls
+            if function_calls:
+                for function_call_part in function_calls:
+                    function_call_result = call_function(function_call_part, verbose)
+                    messages.append(function_call_result)
+                    if not function_call_result.parts[0].function_response.response:
+                        raise Exception("Content is missing from the call_function return, Red Alert!")
+                    elif verbose:
+                        print(f"-> {function_call_result.parts[0].function_response.response}")
+            else:
+                called = False            
+                if verbose:
+                    print("Prompt tokens:", response.usage_metadata.prompt_token_count)
+                    print("Response tokens:", response.usage_metadata.candidates_token_count)
+                print("Response:")
+                print(response.text)
+            i += 1
 
     generate_content(client, messages, verbose)
 
